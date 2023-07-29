@@ -66,9 +66,9 @@ OutputRecord = TypedDict('OutputRecord', {
 })
 
 class DiscardReason(Enum):
-  ShorterSideInsufficient='shorter_side_insufficient',
-  ASideSmallerThanBucket='a_side_smaller_than_bucket',
-  FitNoBucketAdequately='fit_no_bucket_adequately',
+  ShorterSideInsufficient='shorter_side_insufficient'
+  ASideSmallerThanBucket='a_side_smaller_than_bucket'
+  FitNoBucketAdequately='fit_no_bucket_adequately'
 
 @dataclass
 class BucketerArgs:
@@ -128,7 +128,7 @@ class Bucketer:
     self.dtype = torch.bfloat16
     self.device = torch.device('cuda')
     self.discarded = 0
-    self.discard_reasons = { e.value[0]: 0 for e in DiscardReason }
+    self.discard_reasons = { e: 0 for e in DiscardReason }
 
     # note: these are the aspects *prior* to rounding
     # they're from SDXL:
@@ -168,14 +168,14 @@ class Bucketer:
     heights: FloatTensor = hypotenuses*2**.5*thetas_sin
     widths: FloatTensor = hypotenuses*2**.5*thetas_cos
 
-    buckets = torch.column_stack([heights, widths])
+    buckets = torch.column_stack([widths, heights])
     buckets_rounded: IntTensor = 8*(buckets / 8).round().int()
 
     # you can check how close we got to them having same area as square:
     # buckets_rounded.prod(dim=-1)-args.square_side_len_px**2
 
     self.bucket_aspects = (buckets_rounded[:,0]/buckets_rounded[:,1]).cpu()
-    self.buckets = [Dims(bucket[0].item(), bucket[1].item()) for bucket in buckets_rounded.cpu()]
+    self.buckets = [Dims(width=bucket[0].item(), height=bucket[1].item()) for bucket in buckets_rounded.cpu()]
 
     self.imgs_written_by_bucket = {
       Bucketer.get_bucket_metric_key(bucket_w, bucket_h): 0 for bucket_w, bucket_h in self.buckets
@@ -229,6 +229,7 @@ class Bucketer:
 
       if shorter_side < self.args.square_side_len_px:
         self.discarded += 1
+        self.discard_reasons[DiscardReason.ShorterSideInsufficient] += 1
         continue
 
       aspect: float = meta['width'] / meta['height']
@@ -239,16 +240,8 @@ class Bucketer:
 
       if meta['width'] < bucket_w or meta['height'] < bucket_h:
         self.discarded += 1
+        self.discard_reasons[DiscardReason.ASideSmallerThanBucket] += 1
         continue
-
-      # TODO: measure whether torchvision is faster -- it can use nvjpeg to do GPU decode+encode
-      buffer: NDArray = frombuffer(record['jpg'], np.uint8)
-      img: NDArray = cv2.imdecode(buffer, cv2.IMREAD_COLOR)
-      if self.use_cv2_cuda:
-        img_accel = cv2.cuda.GpuMat()
-        img_accel.upload(img)
-      else:
-        img_accel: NDArray = img
 
       meta: InputRecordJson = json.loads(record['json'])
       orig_width, orig_height = meta['width'], meta['height']
@@ -261,7 +254,17 @@ class Bucketer:
       if excess_pct > self.args.bucket_overflow_discard_pct:
         # we lost more than 20% of the image along some dimension. it's not a good fit for even the closest bucket.
         self.discarded += 1
+        self.discard_reasons[DiscardReason.FitNoBucketAdequately] += 1
         continue
+
+      # TODO: measure whether torchvision is faster -- it can use nvjpeg to do GPU decode+encode
+      buffer: NDArray = frombuffer(record['jpg'], np.uint8)
+      img: NDArray = cv2.imdecode(buffer, cv2.IMREAD_COLOR)
+      if self.use_cv2_cuda:
+        img_accel = cv2.cuda.GpuMat()
+        img_accel.upload(img)
+      else:
+        img_accel: NDArray = img
 
       rgb: cv2.cuda.GpuMat | NDArray = Bucketer.bgr_to_rgb(img_accel)
 
@@ -290,7 +293,7 @@ class Bucketer:
   
   @staticmethod
   def get_discard_reason_metric_name(discard_reason: DiscardReason) -> str:
-    return f'imgs_discarded_{discard_reason.value[0]}'
+    return f'imgs_discarded_{discard_reason.value}'
   
   @staticmethod
   def get_bucket_metric_key(bucket_w: int, bucket_h: int) -> str:
@@ -383,7 +386,7 @@ class Bucketer:
         sink.write(out_record)
 
         metric_key: str = Bucketer.get_bucket_metric_key(bucket_w, bucket_h)
-        self.imgs_written_by_bucket[metric_key] = self.imgs_written_by_bucket[metric_key] + 1
+        self.imgs_written_by_bucket[metric_key] += 1
         written += 1
 
         log_interval_current -= 1

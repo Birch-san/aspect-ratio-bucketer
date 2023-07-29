@@ -5,10 +5,10 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Bucket Webdataset",
+      "name": "Python: Bucket Webdataset (OpenCV)",
       "type": "python",
       "request": "launch",
-      "module": "scripts.bucket_webdataset",
+      "module": "scripts.bucket_webdataset_cv2",
       "justMyCode": false,
       "args": [
         "--wds_input_dir",
@@ -22,6 +22,31 @@
         // "--square_side_len_px", "1024",
       ],
       "env": {
+        // I compiled OpenCV from source (to get CUDA acceleration), and my compiler linked in a newer libstdc++
+        // than the OS's. consequently I have to run Python with the compiler's libstdc++ if I import cv2.
+        "LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.31"
+      }
+    },
+    {
+      "name": "Python: Bucket Webdataset (torchvision)",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.bucket_webdataset_torchvision",
+      "justMyCode": false,
+      "args": [
+        "--wds_input_dir",
+        "${env:HOME}/ml-data/cc12m/data",
+        "--wds_output_dir",
+        "${env:HOME}/ml-data/cc12m-out-arb",
+        // "--use_wandb",
+        // "--wandb_run_name", "inpaint-dataset-16",
+        // "--wandb_entity", "mahouko",
+        "--samples_limit", "256",
+        // "--square_side_len_px", "1024",
+      ],
+      "env": {
+        // I compiled OpenCV from source (to get CUDA acceleration), and my compiler linked in a newer libstdc++
+        // than the OS's. consequently I have to run Python with the compiler's libstdc++ if I import cv2.
         "LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.31"
       }
     }

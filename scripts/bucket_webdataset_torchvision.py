@@ -1,7 +1,7 @@
 from argparse import ArgumentParser, Namespace
 import wandb
 
-from support.bucketer import Bucketer, BucketerArgs
+from support.torchvision_bucketer import Bucketer, BucketerArgs
 
 if __name__ == '__main__':
   parser = ArgumentParser()
