@@ -49,6 +49,14 @@
         // than the OS's. consequently I have to run Python with the compiler's libstdc++ if I import cv2.
         "LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.31"
       }
+    },
+    {
+      "name": "Python: ARB analysis",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.arb_analysis",
+      "justMyCode": false,
+      "args": []
     }
   ]
 }
