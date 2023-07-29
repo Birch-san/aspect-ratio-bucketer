@@ -1,0 +1,29 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Bucket Webdataset",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.bucket_webdataset",
+      "justMyCode": false,
+      "args": [
+        "--wds_input_dir",
+        "${env:HOME}/ml-data/cc12m/data",
+        "--wds_output_dir",
+        "${env:HOME}/ml-data/cc12m-out-arb",
+        // "--use_wandb",
+        // "--wandb_run_name", "inpaint-dataset-16",
+        // "--wandb_entity", "mahouko",
+        "--samples_limit", "256",
+        // "--square_side_len_px", "1024",
+      ],
+      "env": {
+        "LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.31"
+      }
+    }
+  ]
+}
